@@ -4,8 +4,16 @@ I am a SystemNavigation implementation that uses the indexes in Aleph for all th
 Class {
 	#name : #AlpSystemNavigation,
 	#superclass : #SystemNavigation,
-	#category : #Aleph
+	#category : #'Aleph-Core'
 }
+
+{ #category : #query }
+AlpSystemNavigation >> allClassNamesStartingWith: aString do: aBlock [
+
+	^ self manager findClassesStartingWith: aString do: [ :aClass |
+		"Somehow this gives a list of lists..."
+		 aBlock value: aClass name ]
+]
 
 { #category : #query }
 AlpSystemNavigation >> allImplementorsOf: aLiteral [
@@ -16,9 +24,19 @@ AlpSystemNavigation >> allImplementorsOf: aLiteral [
 { #category : #query }
 AlpSystemNavigation >> allReferencesTo: aLiteral [
 
+	(aLiteral isKindOf: ClyVariable)
+		ifTrue: [ ^ self manager findReferencesTo: aLiteral actualVariable name ].
+
 	^ self applyScope: (aLiteral isVariableBinding
 		ifTrue:[ self manager findReferencesTo: aLiteral key ]
 		ifFalse: [ self manager findSendersOf: aLiteral ])
+]
+
+{ #category : #query }
+AlpSystemNavigation >> allSelectorsStartingWith: aString do: aBlock [
+
+	^ self manager findSelectorsStartingWith: aString do: [ :aMethod |
+		 aBlock value: aMethod selector]
 ]
 
 { #category : #query }

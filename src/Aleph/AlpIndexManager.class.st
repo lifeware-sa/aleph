@@ -23,15 +23,14 @@ Class {
 	#classVars : [
 		'Current'
 	],
-	#category : #Aleph
+	#category : #'Aleph-Core'
 }
 
 { #category : #accessing }
 AlpIndexManager class >> activate [
 	<script>
 
-	self current active: true.
-
+	self current start.
 ]
 
 { #category : #'instance creation' }
@@ -42,8 +41,10 @@ AlpIndexManager class >> current [
 
 { #category : #accessing }
 AlpIndexManager class >> deactivate [
+	<script>
 
-	self current active: false
+	self current shutDown
+	
 ]
 
 { #category : #accessing }
@@ -155,6 +156,12 @@ AlpIndexManager >> ensureWorkerRunning [
 ]
 
 { #category : #query }
+AlpIndexManager >> findClassesStartingWith: aPrefix do: aBlock [
+
+	^(self indexAt: #classes) withAllValuesBeginningWith: aPrefix do: aBlock
+]
+
+{ #category : #query }
 AlpIndexManager >> findImplementorsOf: aLiteral [
 
 	^ (self indexAt: #implementors) referencesTo: aLiteral
@@ -164,6 +171,12 @@ AlpIndexManager >> findImplementorsOf: aLiteral [
 AlpIndexManager >> findReferencesTo: aLiteral [
 
 	^ (self indexAt: #references) referencesTo: aLiteral
+]
+
+{ #category : #query }
+AlpIndexManager >> findSelectorsStartingWith: aPrefix do: aBlock [
+
+	^(self indexAt: #implementors) withAllValuesBeginningWith: aPrefix do: aBlock
 ]
 
 { #category : #query }
@@ -191,11 +204,7 @@ AlpIndexManager >> initialize [
 
 	super initialize.
 	self active: false.
-	worker := TKTWorker new
-		name: self class indexWorkerName;
-		priority: self class indexPriority;
-		start.
-	self subscribeToSystemAnnouncer
+
 ]
 
 { #category : #testing }
@@ -239,10 +248,12 @@ AlpIndexManager >> navigation: aNavigation [
 { #category : #initialization }
 AlpIndexManager >> newDefaultIndexes [
 
-	^ { #implementors -> AlpImplementorsIndex new.
+	^ { "#implementors -> AlpImplementorsIndex new."
+		 #implementors -> AlpImplementorsIndexWithTable new.
 		 #references -> AlpReferencesIndex new.
-		 #classes -> AlpClassesIndex new.
-		 #senders -> AlpSendersIndex new. } asDictionary 
+		 "#classes -> AlpClassesIndex new."
+		 #senders -> AlpSendersIndex new.
+		 #classes -> AlpClassesIndexWithTable new } asDictionary 
 ]
 
 { #category : #building }
@@ -262,12 +273,33 @@ AlpIndexManager >> rebuildAll [
 
 { #category : #'system startup' }
 AlpIndexManager >> shutDown [
- 
+
+	active ifFalse:[^self].
+
+	active := false.
+	 
 	self unsubscribeFromSystemAnnouncer.
 	indexes ifNotNil: [
 		indexes values do: [ :anIndex | anIndex shutdown ].
 		indexes := nil. ].
-	worker stop
+	worker stop.
+
+]
+
+{ #category : #private }
+AlpIndexManager >> start [ 
+
+	active ifTrue: [ ^ self ].
+
+	worker := TKTWorker new
+		name: self class indexWorkerName;
+		priority: self class indexPriority;
+		start.
+	self subscribeToSystemAnnouncer.
+
+	self rebuildAll.
+		
+	active := true
 ]
 
 { #category : #initialization }
